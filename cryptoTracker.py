@@ -34,20 +34,28 @@ def getAPIKey():
 
 	return file.readline()
 
-#Returns the price of the crypto grabbed from the API
+#Returns the info of the crypto grabbed from the API in a tuple
 #	Args: cryptoCode - code used on website to identify the currency
 #	  	  key - the API key
-def getCryptoPrice(cryptoCode, key):
+#
+#   Returns: Tuple formatted (price, 7d change, 24 hour change, tweet surplus)    
+def getCryptoInfo(cryptoCode, key):
 
 	#Generates url
-	url = "https://api.lunarcrush.com/v2?data=assets&key="+key+"&symbol=BTC"
+    url = "https://api.lunarcrush.com/v2?data=assets&key="+key+"&symbol="+cryptoCode
 
 	#Fetches and parses JSON into dictionary data
-	page = requests.get(url)
-	data = page.json()
+    page = requests.get(url)
+    data = page.json()
+
+    #Debug statement for printing json
+    #print(json.dumps(data, indent=2))
 
 	#returns the price from json file
-	return data["data"][0]["price"]
+    return (data["data"][0]["price"], 
+    data["data"][0]["percent_change_24h"],
+    data["data"][0]["percent_change_7d"],
+    data["data"][0]["timeSeries"][0]["tweets"],)
 
 
 class CurrencyWidget:
@@ -67,36 +75,63 @@ class CurrencyWidget:
         screenWidth = GetSystemMetrics(0)
         screenHeight = GetSystemMetrics(1)
 
-        x=screenWidth-320
+        x=screenWidth-370
         y=screenHeight-200
 
-        windowWidth = 300
+        windowWidth = 350
         windowHeight = 100 
 
         #Configures window
         self.window = Tk()
+        self.window.title("Doge Coin Tracker")
+        self.window.iconbitmap("dogeIcon.ico")
         self.window.geometry(str(windowWidth) + 'x' + str(windowHeight) + '+' + str(x) + '+' + str(y))
         #self.window.overrideredirect(True)
 
-        '''
+        
         #Loads Team Images
         self.imageFile1 = Image.open(self.imagePath1).resize((75, 75), Image.ANTIALIAS)
         self.image1 = ImageTk.PhotoImage(self.imageFile1)
         self.imageLabel1 = Label(image=self.image1)
         self.imageLabel1.image = self.image1
-        self.imageLabel1.place(x=10, y=25)
-		self.imageLabel1.bind("<1>", self.openLink)
+        self.imageLabel1.pack(side=LEFT)
+        self.imageLabel1.bind("<1>", self.openLink)
 
+        #Maps the data grid
+        self.dataGrid = Frame(self.window)
 
         #Configures title text
-		
         self.titleLabel = Label(self.window, text=self.title, font= ("Verdana", 13))
         self.titleLabel.pack()
-		'''
 
-        self.priceLabel = Label(self.window, text="", font= ("Verdana", 13))
-        self.priceLabel.pack()
+        #Holds information key
+        self.keyLabel1 = Label(self.dataGrid, text="Price/Tweets", font= ("Verdana", 10))
+        self.keyLabel1.grid(row=0, column=0, padx=(0))
 
+        self.keyLabel2 = Label(self.dataGrid, text="24H/7D", font= ("Verdana", 10))
+        self.keyLabel2.grid(row=1, column=0, padx=(0))
+
+        #Holds the price label
+        self.priceLabel = Label(self.dataGrid, text="", font= ("Verdana", 13))
+        self.priceLabel.grid(row=0, column=1, padx=(10))
+
+        #Tweets Label
+        self.tweetLabel = Label(self.dataGrid, text="", font= ("Verdana", 13))
+        self.tweetLabel.grid(row=0, column=2, padx=(10))
+
+        #24 Hour Change label
+        self.dayLabel = Label(self.dataGrid, text="", font= ("Verdana", 13))
+        self.dayLabel.grid(row=1, column=1, padx=(10))
+
+        #7 day Change label
+        self.weekLabel = Label(self.dataGrid, text="", font= ("Verdana", 13))
+        self.weekLabel.grid(row=1, column=2, padx=(10))
+
+        self.dataGrid.pack(side=RIGHT)
+
+        
+
+        #Updates window with proper information
         self.updateWindow()
 
         #Creates window
@@ -112,14 +147,29 @@ class CurrencyWidget:
         self.window.destroy()
 
     def updateWindow(self):
-        price = getCryptoPrice(self.triCode, key)
-        self.priceLabel.config(text = str(price))
+        dataTuple = getCryptoInfo(self.triCode, key)
+        self.priceLabel.config(text = "${:.3f}".format(dataTuple[0]))
+        self.dayLabel.config(text = "{:.1f}%".format(dataTuple[1]))
+        self.weekLabel.config(text = "{:.1f}%".format(dataTuple[2]))
+        self.tweetLabel.config(text = "{:d}".format(dataTuple[3]))
+
+        if(dataTuple[1] >= 0):
+            self.dayLabel.config(fg = "green")
+        else:
+            self.dayLabel.config(fg = "red")
+
+        if(dataTuple[2] >= 0):
+            self.weekLabel.config(fg = "green")
+        else:
+            self.weekLabel.config(fg = "red")
+
         self.window.after(1000, self.updateWindow)
 
 
 
 key = getAPIKey()
-print(getCryptoPrice(key, key))
 
-widget = CurrencyWidget(key, title="Title", price=getCryptoPrice(key, key), image1="", triCode="doge")
+widget = CurrencyWidget(key, title="Doge Coin", price=getCryptoInfo("doge",key), image1="./doge.png", triCode="doge")
 widget.createWindow()
+
+print(getCryptoInfo("doge", key))
