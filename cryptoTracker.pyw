@@ -41,21 +41,24 @@ def getAPIKey():
 #   Returns: Tuple formatted (price, 7d change, 24 hour change, tweet surplus)    
 def getCryptoInfo(cryptoCode, key):
 
-	#Generates url
-    url = "https://api.lunarcrush.com/v2?data=assets&key="+key+"&symbol="+cryptoCode
+	try:
+		#Generates url
+		url = "https://api.lunarcrush.com/v2?data=assets&key="+key+"&symbol="+cryptoCode
 
-	#Fetches and parses JSON into dictionary data
-    page = requests.get(url)
-    data = page.json()
+		#Fetches and parses JSON into dictionary data
+		page = requests.get(url)
+		data = page.json()
 
-    #Debug statement for printing json
-    #print(json.dumps(data, indent=2))
+		#Debug statement for printing json
+		#print(json.dumps(data, indent=2))
 
-	#returns the price from json file
-    return (data["data"][0]["price"], 
-    data["data"][0]["percent_change_24h"],
-    data["data"][0]["percent_change_7d"],
-    data["data"][0]["timeSeries"][0]["tweets"],)
+		#returns the price from json file
+		return (data["data"][0]["price"], 
+		data["data"][0]["percent_change_24h"],
+		data["data"][0]["percent_change_7d"],
+		data["data"][0]["timeSeries"][0]["tweets"],)
+	except:
+		return(0,0,0,0)
 
 
 class CurrencyWidget:
@@ -87,8 +90,7 @@ class CurrencyWidget:
         self.window.iconbitmap("dogeIcon.ico")
         self.window.geometry(str(windowWidth) + 'x' + str(windowHeight) + '+' + str(x) + '+' + str(y))
         #self.window.overrideredirect(True)
-
-        
+   
         #Loads Team Images
         self.imageFile1 = Image.open(self.imagePath1).resize((75, 75), Image.ANTIALIAS)
         self.image1 = ImageTk.PhotoImage(self.imageFile1)
@@ -129,8 +131,6 @@ class CurrencyWidget:
 
         self.dataGrid.pack(side=RIGHT)
 
-        
-
         #Updates window with proper information
         self.updateWindow()
 
@@ -146,13 +146,19 @@ class CurrencyWidget:
     def destroyWindow(self):
         self.window.destroy()
 
+    #Updates the window with new data
     def updateWindow(self):
+
+        #Gets dataTuple
         dataTuple = getCryptoInfo(self.triCode, key)
+
+        #Changes label text
         self.priceLabel.config(text = "${:.3f}".format(dataTuple[0]))
         self.dayLabel.config(text = "{:.1f}%".format(dataTuple[1]))
         self.weekLabel.config(text = "{:.1f}%".format(dataTuple[2]))
         self.tweetLabel.config(text = "{:d}".format(dataTuple[3]))
 
+        #Handles color change for 24 hour and week change percentages
         if(dataTuple[1] >= 0):
             self.dayLabel.config(fg = "green")
         else:
@@ -163,13 +169,16 @@ class CurrencyWidget:
         else:
             self.weekLabel.config(fg = "red")
 
+        #Sets function to be called again in 1000
         self.window.after(1000, self.updateWindow)
 
+#----------------
+# Main
+#----------------
 
-
+#Get API key from config file
 key = getAPIKey()
 
+#Creates Currency Window for Doge Coin
 widget = CurrencyWidget(key, title="Doge Coin", price=getCryptoInfo("doge",key), image1="./doge.png", triCode="doge")
 widget.createWindow()
-
-print(getCryptoInfo("doge", key))
